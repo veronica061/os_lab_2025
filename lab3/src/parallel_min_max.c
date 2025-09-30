@@ -18,11 +18,9 @@
 #include "find_min_max.h"
 #include "utils.h"
 
-// Глобальные переменные для хранения PID дочерних процессов
 pid_t *child_pids = NULL;
 int child_count = 0;
 
-// Обработчик сигнала для таймера
 void timeout_handler(int sig) {
     printf("Timeout reached! Sending SIGKILL to all child processes...\n");
     for (int i = 0; i < child_count; i++) {
@@ -37,7 +35,7 @@ int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
   int pnum = -1;
-  int timeout = 0; // 0 означает отсутствие таймаута
+  int timeout = 0; 
   bool with_files = false;
 
   while (true) {
@@ -48,7 +46,7 @@ int main(int argc, char **argv) {
         {"array_size", required_argument, 0, 0},
         {"pnum", required_argument, 0, 0},
         {"by_files", no_argument, 0, 'f'},
-        {"timeout", required_argument, 0, 't'}, // новый параметр
+        {"timeout", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
@@ -92,7 +90,7 @@ int main(int argc, char **argv) {
       case 'f':
         with_files = true;
         break;
-      case 't': // обработка таймаута
+      case 't':
         timeout = atoi(optarg);
         if (timeout <= 0) {
           printf("timeout must be a positive number\n");
@@ -120,7 +118,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // Выделяем память для хранения PID дочерних процессов
   child_pids = malloc(pnum * sizeof(pid_t));
   if (child_pids == NULL) {
     printf("Memory allocation failed for child_pids\n");
@@ -130,7 +127,6 @@ int main(int argc, char **argv) {
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
   
-  // Создаем пайпы для каждого процесса (если не используем файлы)
   int pipes[2 * pnum];
   if (!with_files) {
     for (int i = 0; i < pnum; i++) {
@@ -148,25 +144,19 @@ int main(int argc, char **argv) {
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
-  // Настраиваем таймер, если задан таймаут
   if (timeout > 0) {
     signal(SIGALRM, timeout_handler);
     alarm(timeout);
     printf("Timer set for %d seconds\n", timeout);
   }
 
-  // Создаем дочерние процессы
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
-      // successful fork
       active_child_processes += 1;
-      child_pids[child_count++] = child_pid; // сохраняем PID дочернего процесса
+      child_pids[child_count++] = child_pid;
       
       if (child_pid == 0) {
-        // child process
-        
-        // Вычисляем диапазон для текущего процесса
         int segment_size = array_size / pnum;
         int begin = i * segment_size;
         int end = (i == pnum - 1) ? array_size : (i + 1) * segment_size;
@@ -174,11 +164,9 @@ int main(int argc, char **argv) {
         printf("Child process %d (PID: %d) processing range [%d, %d)\n", 
                i, getpid(), begin, end);
         
-        // Ищем min/max в своем сегменте
         struct MinMax local_min_max = GetMinMax(array, begin, end);
         
         if (with_files) {
-          // use files here
           char filename_min[20], filename_max[20];
           sprintf(filename_min, "min_%d.txt", i);
           sprintf(filename_max, "max_%d.txt", i);
@@ -193,13 +181,12 @@ int main(int argc, char **argv) {
             printf("Child %d wrote results to files\n", i);
           }
         } else {
-          // use pipe here
-          close(pipes[i * 2]); // закрываем чтение
+          close(pipes[i * 2]);
           
           write(pipes[i * 2 + 1], &local_min_max.min, sizeof(int));
           write(pipes[i * 2 + 1], &local_min_max.max, sizeof(int));
           
-          close(pipes[i * 2 + 1]); // закрываем запись
+          close(pipes[i * 2 + 1]);
           printf("Child %d sent results via pipe\n", i);
         }
         free(array);
@@ -213,8 +200,6 @@ int main(int argc, char **argv) {
       return 1;
     }
   }
-
-  // Родительский процесс ожидает завершения всех дочерних
   int completed_children = 0;
   while (active_child_processes > 0) {
     int status;
@@ -233,25 +218,21 @@ int main(int argc, char **argv) {
       }
     }
   }
-
-  // Отключаем таймер, если он был установлен и не сработал
   if (timeout > 0) {
-    alarm(0); // отключаем таймер
+    alarm(0); 
     printf("All child processes completed, timer disabled\n");
   }
 
   struct MinMax min_max;
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
-
-  // Собираем результаты от всех процессов
   int successful_children = 0;
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
+    int results_available = 0;
 
     if (with_files) {
-      // read from files
       char filename_min[20], filename_max[20];
       sprintf(filename_min, "min_%d.txt", i);
       sprintf(filename_max, "max_%d.txt", i);
@@ -259,34 +240,39 @@ int main(int argc, char **argv) {
       FILE *file_min = fopen(filename_min, "r");
       FILE *file_max = fopen(filename_max, "r");
       
-      if (file_min) {
-        if (fscanf(file_min, "%d", &min) == 1) {
+      if (file_min && file_max) {
+        if (fscanf(file_min, "%d", &min) == 1 && fscanf(file_max, "%d", &max) == 1) {
           successful_children++;
+          results_available = 1;
+          printf("Successfully read results from child %d: min=%d, max=%d\n", i, min, max);
         }
         fclose(file_min);
-        remove(filename_min);
-      }
-      if (file_max) {
-        if (fscanf(file_max, "%d", &max) == 1) {
-          successful_children++;
-        }
         fclose(file_max);
-        remove(filename_max);
       }
+      remove(filename_min);
+      remove(filename_max);
     } else {
-      // read from pipes
-      close(pipes[i * 2 + 1]); // закрываем запись
+      close(pipes[i * 2 + 1]);
       
-      if (read(pipes[i * 2], &min, sizeof(int)) == sizeof(int) &&
-          read(pipes[i * 2], &max, sizeof(int)) == sizeof(int)) {
+      int min_read = read(pipes[i * 2], &min, sizeof(int));
+      int max_read = read(pipes[i * 2], &max, sizeof(int));
+      
+      if (min_read == sizeof(int) && max_read == sizeof(int)) {
         successful_children++;
+        results_available = 1;
+        printf("Successfully read results from child %d via pipe: min=%d, max=%d\n", i, min, max);
+      } else {
+        printf("Failed to read results from child %d via pipe (min_read=%d, max_read=%d)\n", 
+               i, min_read, max_read);
       }
       
-      close(pipes[i * 2]); // закрываем чтение
+      close(pipes[i * 2]);
     }
 
-    if (min < min_max.min) min_max.min = min;
-    if (max > min_max.max) min_max.max = max;
+    if (results_available) {
+      if (min < min_max.min) min_max.min = min;
+      if (max > min_max.max) min_max.max = max;
+    }
   }
 
   struct timeval finish_time;
@@ -301,11 +287,13 @@ int main(int argc, char **argv) {
   printf("\nResults:\n");
   printf("Min: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
-  printf("Successful children: %d/%d\n", successful_children / 2, pnum);
+  printf("Successful children: %d/%d\n", successful_children, pnum);
   printf("Elapsed time: %fms\n", elapsed_time);
   
-  if (timeout > 0 && successful_children < pnum * 2) {
+  if (timeout > 0 && successful_children < pnum) {
     printf("Warning: Not all child processes completed successfully (timeout may have occurred)\n");
+  } else if (successful_children == pnum) {
+    printf("All child processes completed successfully\n");
   }
   
   fflush(NULL);
