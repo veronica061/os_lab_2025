@@ -4,29 +4,10 @@
 #include <string.h>
 #include <getopt.h>
 #include <time.h>
-
 #include <pthread.h>
 
-struct SumArgs {
-  int *array;
-  int begin;
-  int end;
-};
-
-void GenerateArray(int *array, unsigned int array_size, unsigned int seed) {
-    srand(seed);
-    for (unsigned int i = 0; i < array_size; i++) {
-        array[i] = rand();
-    }
-}
-
-int Sum(const struct SumArgs *args) {
-  int sum = 0;
-  for (int i = args->begin; i < args->end; i++) {
-    sum += args->array[i];
-  }
-  return sum;
-}
+#include "sum_lib.h"
+#include "array_utils.h"
 
 void *ThreadSum(void *args) {
   struct SumArgs *sum_args = (struct SumArgs *)args;
@@ -82,7 +63,6 @@ int main(int argc, char **argv) {
   }
 
   printf("Threads: %u, Array Size: %u, Seed: %u\n", threads_num, array_size, seed);
-
 
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
