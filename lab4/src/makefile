@@ -13,9 +13,17 @@ $(TARGET): $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS) $(CFLAGS)
 	@echo "$(TARGET) built successfully"
 
-%.o: %.c $(HEADERS)
-	@echo "Compiling $<..."
-	$(CC) -c -o $@ $< $(CFLAGS)
+parallel_sum.o: parallel_sum.c $(HEADERS)
+	@echo "Compiling parallel_sum.c..."
+	$(CC) -c -o $@ parallel_sum.c $(CFLAGS)
+
+sum_lib.o: sum_lib.c sum_lib.h
+	@echo "Compiling sum_lib.c..."
+	$(CC) -c -o $@ sum_lib.c $(CFLAGS)
+
+array_utils.o: array_utils.c array_utils.h
+	@echo "Compiling array_utils.c..."
+	$(CC) -c -o $@ array_utils.c $(CFLAGS)
 
 run: $(TARGET)
 	@echo "Running $(TARGET) with test parameters..."
@@ -35,17 +43,10 @@ test: $(TARGET)
 	@echo "=== 8 threads ==="
 	./$(TARGET) --threads_num 8 --array_size 1000000 --seed 42
 
-check: $(TARGET)
-	@echo "Checking correctness..."
-	@echo "Parallel version:"
-	@./$(TARGET) --threads_num 4 --array_size 100000 --seed 123 | grep "Total sum"
-	@echo "Expected: Run sequential version to compare"
-
-# Очистка
 clean:
 	@echo "Cleaning..."
 	rm -f $(TARGET) $(OBJECTS)
 	@echo "Clean complete"
 
 
-.PHONY: all run test check clean help
+.PHONY: all run test clean help
