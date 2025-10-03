@@ -66,7 +66,6 @@ int main() {
             }
         }
         
-        // Проверка 4: После очистки
         print_process_info("AFTER CLEANUP (ZOMBIE SHOULD BE GONE)", parent_pid, child_pid);
         
         printf("\nDEMONSTRATION COMPLETED SUCCESSFULLY!\n");
