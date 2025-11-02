@@ -164,7 +164,6 @@ int main(int argc, char **argv) {
                 args[i].begin = current;
                 args[i].end = current + numbers_per_thread - 1;
                 
-                // Распределяем остаток по первым потокам
                 if (i < remainder) {
                     args[i].end++;
                 }
@@ -178,7 +177,6 @@ int main(int argc, char **argv) {
                 }
             }
 
-            // Сбор результатов от потоков
             uint64_t total = 1;
             for (uint32_t i = 0; i < tnum; i++) {
                 uint64_t *result = NULL;

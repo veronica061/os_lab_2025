@@ -48,7 +48,6 @@ void* ProcessServer(void* arg) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(data->server.port);
     
-    // Копируем адрес из h_addr_list[0]
     memcpy(&server_addr.sin_addr, hostname->h_addr_list[0], hostname->h_length);
 
     int sck = socket(AF_INET, SOCK_STREAM, 0);
@@ -154,7 +153,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Чтение серверов из файла
     FILE* file = fopen(servers_file, "r");
     if (file == NULL) {
         fprintf(stderr, "Cannot open servers file: %s\n", servers_file);
@@ -200,7 +198,6 @@ int main(int argc, char **argv) {
 
     printf("Found %d servers\n", servers_num);
 
-    // Создаем и инициализируем данные для потоков
     struct ThreadData* thread_data = malloc(servers_num * sizeof(struct ThreadData));
     if (!thread_data) {
         fprintf(stderr, "Memory allocation failed\n");
@@ -208,7 +205,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Распределение работы между серверами
     uint64_t numbers_per_server = k / servers_num;
     uint64_t remainder = k % servers_num;
     uint64_t current = 1;
@@ -232,7 +228,6 @@ int main(int argc, char **argv) {
                thread_data[i].begin, thread_data[i].end);
     }
 
-    // ЗАПУСК ВСЕХ ПОТОКОВ ПАРАЛЛЕЛЬНО
     printf("\n=== Starting parallel execution ===\n");
     for (int i = 0; i < servers_num; i++) {
         if (pthread_create(&thread_data[i].thread_id, NULL, ProcessServer, &thread_data[i])) {
@@ -244,13 +239,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    // ОЖИДАНИЕ ЗАВЕРШЕНИЯ ВСЕХ ПОТОКОВ ПАРАЛЛЕЛЬНО
+
     printf("\n=== Waiting for all servers to complete ===\n");
     for (int i = 0; i < servers_num; i++) {
         pthread_join(thread_data[i].thread_id, NULL);
     }
 
-    // СБОР РЕЗУЛЬТАТОВ ПОСЛЕ ЗАВЕРШЕНИЯ ВСЕХ ПОТОКОВ
     printf("\n=== Collecting results ===\n");
     uint64_t total_result = 1;
     int all_success = 1;
@@ -269,13 +263,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Вывод итогов
     printf("\n=== Final Results ===\n");
     if (all_success) {
         printf("All %d servers completed successfully\n", servers_num);
         printf("Final result: %lu! mod %lu = %lu\n", k, mod, total_result);
         
-        // Верификация
+        // Проверка
         uint64_t sequential_result = 1;
         for (uint64_t i = 1; i <= k; i++) {
             sequential_result = MultModulo(sequential_result, i, mod);
