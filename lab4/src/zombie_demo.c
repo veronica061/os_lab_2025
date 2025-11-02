@@ -37,7 +37,7 @@ int main() {
     
     if (child_pid == 0) {
         printf("Child Process: PID %d (Parent: %d)\n", getpid(), getppid());
-        printf("Child: I'm exiting now and will become a ZOMBIE! 🧟\n");
+        printf("Child: I'm exiting now and will become a ZOMBIE!\n");
         
         exit(42);
     } else {
@@ -66,7 +66,6 @@ int main() {
             }
         }
         
-        // Проверка 4: После очистки
         print_process_info("AFTER CLEANUP (ZOMBIE SHOULD BE GONE)", parent_pid, child_pid);
         
         printf("\nDEMONSTRATION COMPLETED SUCCESSFULLY!\n");
